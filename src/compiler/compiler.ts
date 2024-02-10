@@ -7,18 +7,40 @@ export interface FilesResolver {
 }
 
 export interface CompilerOptions extends esbuild.InitializeOptions {
+  /**
+   * package.json文件内容
+   */
   packageJson?: Record<string, any>
-  // 是否替换第三方依赖包包名为importMap中的url，默认替换
+  /**
+   * 是否替换第三方依赖包包名为importMap中的url，默认true
+   */
   replaceImports?: boolean
 }
 
+/**
+ * esbuild.wasm 默认文件地址
+ */
 const ESBUILD_WASM_URL = 'https://esm.sh/esbuild-wasm@0.20.0/esbuild.wasm'
 
 const DEFAULT_COMPILER_OPTIONS: CompilerOptions = {
   wasmURL: ESBUILD_WASM_URL,
-  worker: false,
+  worker: true,
+  wasmModule: undefined,
 }
 
+/**
+ * files对象格式 文件解析器
+ * @param files
+ * @param path
+ * @example const files = {
+ *   "/index.ts": `
+ *      import {count} from './count'
+ *      const name = 'home'
+ *   `,
+ *   "/count":`export const count = 1`
+ * }
+ * @example kvFilesResolver(files,'/count')=>`export const count = 1`
+ */
 export const kvFilesResolver = (files: Record<string, string>, path: string) => {
   const getValueByKeyWithoutExtension = (files: any, keyWithoutExtension: string) => {
     for (const key in files) {
@@ -65,7 +87,7 @@ export class Compiler {
       target: 'es2015',
       platform: 'browser',
       format: 'esm',
-      ...omit(options,['plugins']),
+      ...omit(options, ['plugins']),
       // required
       bundle: true,
       write: false,
@@ -74,6 +96,9 @@ export class Compiler {
     return this.decoder.decode(contents)
   }
 
+  /**
+   * 获取importmap script标签
+   */
   public getImportsScriptElement() {
     const importmap: Record<string, string> = {}
     const packageJson = this.options?.packageJson

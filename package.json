@@ -1,6 +1,6 @@
 {
   "name": "@carbontian/esbuild-wasm-compiler",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": false,
   "description": "File Resolution for Esbuild running in the Browser",
   "keywords": [
@@ -24,8 +24,7 @@
     "prepublishOnly": "father doctor && npm run build"
   },
   "files": [
-    "dist",
-    "compiled"
+    "dist"
   ],
   "publishConfig": {
     "access": "public"

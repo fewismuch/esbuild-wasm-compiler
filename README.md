@@ -2,15 +2,20 @@
 
 ![NPM version](https://img.shields.io/npm/v/esbuild-wasm-compiler.svg?style=flat)
 
-File Resolution for Esbuild running in the Browser
+一个`esbuild-wasm`在浏览器中运行的文件解析器
 
-## Install
+## 介绍
+`esbuild-wasm-compiler`是`esbuild-wasm`的文件解析器。由于Web浏览器不能直接访问文件系统，`esbuild-wasm-compiler`在编译过程中拦截esbuild发出的文件“读”请求，允许应用程序从外部解析文件。通过这种机制，esbuild可以解析来自IndexedDB、LocalStorage、Http或任何其他浏览器可访问的可读设备的文件。
+
+参考了 [sinclairzx81/esbuild-wasm-resolve](https://github.com/sinclairzx81/esbuild-wasm-resolve) ，在此基础上添加了第三方依赖包解析和css文件解析，以及一些工具函数。
+
+## 安装
 
 ```bash
 $ npm install @carbontian/esbuild-wasm-compiler
 ```
 
-## Usage
+## 使用
 
 ```javascript
 import {Compiler,kvFilesResolver} from '@carbontian/esbuild-wasm-compiler'
@@ -29,6 +34,8 @@ console.log(code);
 
 
 ```
+
+`./files`
 
 ```javascript
 const AppCode = `
@@ -73,13 +80,50 @@ export const files = {
 };
 ```
 
-## Options
+## 配置项
+
+```typescript
+export interface FilesResolver {
+  filesResolver(path: string): Promise<string> | string;
+}
+export interface CompilerOptions extends esbuild.InitializeOptions {
+  /**
+   * package.json文件内容
+   */
+  packageJson?: Record<string, any>;
+  /**
+   * 是否替换第三方依赖包包名为importMap中的url，默认true
+   */
+  replaceImports?: boolean;
+}
+/**
+ * files对象格式 文件解析器
+ * @param files
+ * @param path
+ * @example const files = {
+ *   "/index.ts": `
+ *      import {count} from './count'
+ *      const name = 'home'
+ *   `,
+ *   "/count":`export const count = 1`
+ * }
+ * @example kvFilesResolver(files,'/count')=>`export const count = 1`
+ */
+export declare const kvFilesResolver: (files: Record<string, string>, path: string) => string;
+export declare class Compiler {
+  constructor(resolver: FilesResolver, options?: CompilerOptions | undefined);
+  compile(entryPoint: string, options?: esbuild.BuildOptions): Promise<string>;
+  /**
+   * 获取importmap script标签
+   */
+  getImportsScriptElement(): HTMLScriptElement;
+}
+
+// 默认esbuild-wasm url
+const ESBUILD_WASM_URL = 'https://esm.sh/esbuild-wasm@0.20.0/esbuild.wasm'
 
 
-| name | type | default | description |
-| ---- | ---- | ------- |-------------|
-|      |      |         |             |
-|      |      |         |             |
+```
 
 ## LICENSE
 
