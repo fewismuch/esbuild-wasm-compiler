@@ -1,0 +1,39 @@
+{
+  "name": "@carbontian/esbuild-wasm-compiler",
+  "version": "0.0.1",
+  "private": false,
+  "description": "File Resolution for Esbuild running in the Browser",
+  "keywords": [
+    "esbuild",
+    "wasm",
+    "resolve",
+    "file-system"
+  ],
+  "authors": "fewismuch",
+  "license": "MIT",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fewismuch/esbuild-wasm-compiler"
+  },
+  "scripts": {
+    "dev": "father dev",
+    "build": "father build",
+    "build:deps": "father prebundle",
+    "prepublishOnly": "father doctor && npm run build"
+  },
+  "files": [
+    "dist",
+    "compiled"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "father": "^4.1.7"
+  },
+  "dependencies": {
+    "esbuild-wasm": "^0.20.0"
+  }
+}
