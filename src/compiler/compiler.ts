@@ -65,10 +65,7 @@ export class Compiler {
     })
   }
 
-  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}): Promise<string | {
-    error: boolean;
-    message: string
-  }> {
+  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
     while (!this.initialized) {
       // Wait until initialization is complete
       await new Promise(resolve => setTimeout(resolve, 16))
