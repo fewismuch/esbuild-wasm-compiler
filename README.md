@@ -22,7 +22,7 @@ $ npm install @carbontian/esbuild-wasm-compiler
 
 ### html中使用
 
-[example](https://)
+[example](https://github.com/fewismuch/esbuild-wasm-compiler/blob/main/example/index.html)
 
 ### 项目中使用
 
