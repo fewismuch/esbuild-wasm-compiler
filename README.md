@@ -1,11 +1,13 @@
 # esbuild-wasm-compiler
 
-![NPM version](https://img.shields.io/npm/v/esbuild-wasm-compiler.svg?style=flat)
+![NPM version](https://img.shields.io/npm/v/@carbontian/esbuild-wasm-compiler.svg?style=flat)
 
-一个`esbuild-wasm`在浏览器中运行的文件解析器
+一个运行在浏览器中`esbuild-wasm`的文件解析器
 
 ## 介绍
 `esbuild-wasm-compiler`是`esbuild-wasm`的文件解析器。由于Web浏览器不能直接访问文件系统，`esbuild-wasm-compiler`在编译过程中拦截esbuild发出的文件“读”请求，允许应用程序从外部解析文件。通过这种机制，esbuild可以解析来自IndexedDB、LocalStorage、Http或任何其他浏览器可访问的可读设备的文件。
+
+`esbuild-wasm-compiler`主要提供给编辑器使用。
 
 参考了 [sinclairzx81/esbuild-wasm-resolve](https://github.com/sinclairzx81/esbuild-wasm-resolve) ，在此基础上添加了第三方依赖包解析和css文件解析，以及一些工具函数。
 
