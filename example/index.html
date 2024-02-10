@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>esbuild-wasm-demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/@carbontian/esbuild-wasm-compiler@0.0.4/dist/esbuild-wasm-compiler.min.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      let Main = `
+        import React from 'react'
+        import ReactDOM from 'react-dom/client'
+        import App from './App'
+
+        ReactDOM.createRoot(document.getElementById('root')!).render(
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
+        )
+    `
+      let AppCode = `
+        import React from 'react'
+        import {Button} from './Button'
+        import './index.css'
+
+         const App = ()=>{
+          const [num,setNum]=React.useState<number>(1)
+          return <>
+              <button onClick={()=>setNum(num+1)}>click</button>
+              <span className='ty'>{num}</span>
+              <Button/>
+            </>
+        }
+        export default App
+        `;
+
+      const ButtonCode = `
+        import React from 'react'
+        import {round} from 'lodash-es'
+
+        export const Button = ()=>{
+          return <button>{round(1.23456,2)}</button>
+        }`;
+
+      const constCode = `export const name = 'abc';`;
+
+      const indexCssCode = `.ty{color:red}`;
+
+      const files = {
+        "/main.tsx": Main,
+        "/App.tsx": AppCode,
+        "/Button.tsx": ButtonCode,
+        "/index.css": indexCssCode,
+      };
+    </script>
+    <script>
+      const compiler = new Compiler({
+        filesResolver: path => {
+          return kvFilesResolver(files, path)
+        }
+      })
+      document.body.appendChild(compiler.getImportsScriptElement())
+
+      const init = async () => {
+        const code = await compiler.compile('/main.tsx')
+        console.log(code)
+        const script = document.createElement("script");
+        script.type = "module";
+        script.innerHTML = code
+        document.body.appendChild(script);
+      }
+
+      init()
+    </script>
+  </body>
+</html>
