@@ -65,35 +65,51 @@ export class Compiler {
     })
   }
 
-  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
+  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}): Promise<string | {
+    error: boolean;
+    message: string
+  }> {
     while (!this.initialized) {
       // Wait until initialization is complete
       await new Promise(resolve => setTimeout(resolve, 16))
     }
 
-    const result = await esbuild.build({
-      entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
-      plugins: [
-        {
-          name: 'browserResolve',
-          setup: (build) => {
-            build.onResolve({filter: /.*/}, async (args) => this.onResolveCallback(args))
-            build.onLoad({filter: /.*/}, (args) => this.onLoadCallback(args))
+    let result;
+    try {
+      result = await esbuild.build({
+        entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
+        plugins: [
+          {
+            name: 'browserResolve',
+            setup: (build) => {
+              build.onResolve({filter: /.*/}, async (args) => this.onResolveCallback(args))
+              build.onLoad({filter: /.*/}, (args) => this.onLoadCallback(args))
+            },
           },
-        },
-        ...options.plugins || [],
-      ],
-      sourcemap: 'inline',
-      target: 'es2015',
-      platform: 'browser',
-      format: 'esm',
-      ...omit(options, ['plugins']),
-      // required
-      bundle: true,
-      write: false,
-    })
-    const contents = result.outputFiles![0].contents
-    return this.decoder.decode(contents)
+          ...options.plugins || [],
+        ],
+        sourcemap: 'inline',
+        target: 'es2015',
+        platform: 'browser',
+        format: 'esm',
+        ...omit(options, ['plugins']),
+        // required
+        bundle: true,
+        write: false,
+      })
+      const contents = result.outputFiles![0].contents
+      return this.decoder.decode(contents)
+    } catch (e: any) {
+      let formatted = await esbuild.formatMessages(e.errors, {
+        kind: 'error',
+        color: false,
+        terminalWidth: 100,
+      })
+      return {
+        error: true,
+        message: formatted.join('\n')
+      }
+    }
   }
 
   /**

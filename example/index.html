@@ -66,6 +66,11 @@
       const init = async () => {
         const code = await compiler.compile('/main.tsx')
         console.log(code)
+        // 编译报错详细信息
+        if(typeof code !== 'string' && code.error) {
+          document.querySelector('#root').innerHTML = code.message
+          return
+        }
         const script = document.createElement("script");
         script.type = "module";
         script.innerHTML = code
