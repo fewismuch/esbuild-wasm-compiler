@@ -1,6 +1,6 @@
 {
   "name": "@carbontian/esbuild-wasm-compiler",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": false,
   "description": "File Resolution for Esbuild running in the Browser",
   "keywords": [
@@ -13,7 +13,7 @@
   "license": "MIT",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
-  "unpkg": "dist/esbuild-wasm-compiler.min.js",
+  "main": "dist/esbuild-wasm-compiler.min.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/fewismuch/esbuild-wasm-compiler"
