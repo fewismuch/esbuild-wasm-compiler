@@ -1,6 +1,6 @@
 # esbuild-wasm-compiler
 
-![NPM version](https://img.shields.io/npm/v/@carbontian/esbuild-wasm-compiler.svg?style=flat)
+![NPM version](https://img.shields.io/npm/v/@rainetian/esbuild-wasm-compiler.svg?style=flat)
 
 一个运行在浏览器中`esbuild-wasm`的文件解析器
 
@@ -15,7 +15,7 @@
 ## 安装
 
 ```bash
-$ npm install @carbontian/esbuild-wasm-compiler
+$ npm install @rainetian/esbuild-wasm-compiler
 ```
 
 ## 使用
@@ -27,7 +27,7 @@ $ npm install @carbontian/esbuild-wasm-compiler
 ### 项目中使用
 
 ```javascript
-import {Compiler,kvFilesResolver} from '@carbontian/esbuild-wasm-compiler'
+import {Compiler,kvFilesResolver} from '@rainetian/esbuild-wasm-compiler'
 import {files} from './files'
 
 const compiler = new Compiler({
