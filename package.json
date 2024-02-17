@@ -30,11 +30,11 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "esbuild-wasm": "^0.20.0"
+  },
   "devDependencies": {
     "@rainetian/lint": "^0.1.0",
     "father": "^4.1.7"
-  },
-  "dependencies": {
-    "esbuild-wasm": "^0.20.0"
   }
 }
