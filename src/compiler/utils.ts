@@ -1,11 +1,11 @@
-import * as esbuild from "esbuild-wasm";
+import * as esbuild from 'esbuild-wasm'
 
 export const cleanVersion = (version: string) => {
-  const prefixes = ['^', '~', 'latest', '=', '>', '>=', '<=', '<', '*'];
-  prefixes.forEach(item => {
+  const prefixes = ['^', '~', 'latest', '=', '>', '>=', '<=', '<', '*']
+  prefixes.forEach((item) => {
     version = version.replace(item, '')
   })
-  return version;
+  return version
 }
 
 export const css2Js = (name: string, value: string) => {
@@ -23,30 +23,29 @@ export const css2Js = (name: string, value: string) => {
           })()`
 }
 
-
 export const getLoaderByLang = (lang: string) => {
-  let loader: esbuild.Loader;
+  let loader: esbuild.Loader
   switch (lang) {
     case '.ts':
-      loader = 'ts';
-      break;
+      loader = 'ts'
+      break
     case '.tsx':
-      loader = 'tsx';
-      break;
+      loader = 'tsx'
+      break
     case '.js':
-      loader = 'jsx';
-      break;
+      loader = 'jsx'
+      break
     case '.jsx':
-      loader = 'jsx';
-      break;
+      loader = 'jsx'
+      break
     case '.json':
-      loader = 'json';
-      break;
+      loader = 'json'
+      break
     case '.css':
-      loader = 'js';
+      loader = 'js'
     default:
-      loader = 'tsx';
-      break;
+      loader = 'tsx'
+      break
   }
   return loader
 }

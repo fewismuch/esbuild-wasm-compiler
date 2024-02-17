@@ -1,6 +1,6 @@
 {
-  "name": "@carbontian/esbuild-wasm-compiler",
-  "version": "0.0.5",
+  "name": "@rainetian/esbuild-wasm-compiler",
+  "version": "0.0.6",
   "private": false,
   "description": "File Resolution for Esbuild running in the Browser",
   "keywords": [
@@ -31,6 +31,7 @@
     "access": "public"
   },
   "devDependencies": {
+    "@rainetian/lint": "^0.1.0",
     "father": "^4.1.7"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import * as esbuild from 'esbuild-wasm'
-import {Path} from '../path'
-import {cleanVersion, css2Js, getEsmUrl, getLoaderByLang, omit} from "./utils";
+import { Path } from '../path'
+import { cleanVersion, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
 
 export interface FilesResolver {
   filesResolver(path: string): Promise<string> | string
@@ -45,12 +45,12 @@ export const kvFilesResolver = (files: Record<string, string>, path: string) => 
   const getValueByKeyWithoutExtension = (files: any, keyWithoutExtension: string) => {
     for (const key in files) {
       if (key.startsWith(`${keyWithoutExtension}`)) {
-        return files[key];
+        return files[key]
       }
     }
   }
 
-  const contents: string = getValueByKeyWithoutExtension(files, path);
+  const contents: string = getValueByKeyWithoutExtension(files, path)
   return contents
 }
 
@@ -58,20 +58,28 @@ export class Compiler {
   private readonly decoder: TextDecoder
   private initialized: boolean = false
 
-  constructor(private readonly resolver: FilesResolver, private readonly options?: CompilerOptions) {
+  constructor(
+    private readonly resolver: FilesResolver,
+    private readonly options?: CompilerOptions
+  ) {
     this.decoder = new TextDecoder()
-    esbuild.initialize({...DEFAULT_COMPILER_OPTIONS, ...omit(options, ['packageJson', 'replaceImports'])}).then(() => {
-      this.initialized = true
-    })
+    esbuild
+      .initialize({
+        ...DEFAULT_COMPILER_OPTIONS,
+        ...omit(options, ['packageJson', 'replaceImports']),
+      })
+      .then(() => {
+        this.initialized = true
+      })
   }
 
   public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
     while (!this.initialized) {
       // Wait until initialization is complete
-      await new Promise(resolve => setTimeout(resolve, 16))
+      await new Promise((resolve) => setTimeout(resolve, 16))
     }
 
-    let result;
+    let result
     try {
       result = await esbuild.build({
         entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
@@ -79,11 +87,11 @@ export class Compiler {
           {
             name: 'browserResolve',
             setup: (build) => {
-              build.onResolve({filter: /.*/}, async (args) => this.onResolveCallback(args))
-              build.onLoad({filter: /.*/}, (args) => this.onLoadCallback(args))
+              build.onResolve({ filter: /.*/ }, async (args) => this.onResolveCallback(args))
+              build.onLoad({ filter: /.*/ }, (args) => this.onLoadCallback(args))
             },
           },
-          ...options.plugins || [],
+          ...(options.plugins || []),
         ],
         sourcemap: 'inline',
         target: 'es2015',
@@ -104,7 +112,7 @@ export class Compiler {
       })
       return {
         error: true,
-        message: formatted.join('\n')
+        message: formatted.join('\n'),
       }
     }
   }
@@ -117,19 +125,19 @@ export class Compiler {
     const packageJson = this.options?.packageJson
     if (packageJson) {
       const dependencies: Record<string, string> = packageJson.dependencies
-      Object.keys(dependencies).forEach(key => {
+      Object.keys(dependencies).forEach((key) => {
         importmap[key] = `https://esm.sh/${key}@${cleanVersion(dependencies[key])}`
       })
     }
-    const script = document.createElement("script");
-    script.type = "importmap";
-    script.innerHTML = JSON.stringify({imports: importmap})
+    const script = document.createElement('script')
+    script.type = 'importmap'
+    script.innerHTML = JSON.stringify({ imports: importmap })
     return script
   }
 
   private async onResolveCallback(args: esbuild.OnResolveArgs) {
     if (args.kind === 'entry-point') {
-      return {path: '/' + args.path}
+      return { path: '/' + args.path }
     }
     if (args.kind === 'import-statement') {
       const esmName = args.path.split('/')[0]
@@ -143,23 +151,23 @@ export class Compiler {
           modulePath = getEsmUrl(esmName, cleanVersion(dependencies[esmName]))
           return {
             path: modulePath,
-            external: true
+            external: true,
           }
         } else if (this.options?.replaceImports !== false) {
           // 没有配置packageJson，默认使用cdn最新版
           return {
             path: getEsmUrl(esmName),
-            external: true
+            external: true,
           }
         }
         return {
           path: esmName,
-          external: true
+          external: true,
         }
       }
       const dirname = Path.dirname(args.importer)
       const path = Path.join(dirname, args.path)
-      return {path}
+      return { path }
     }
     throw Error('not resolvable')
   }
@@ -167,12 +175,12 @@ export class Compiler {
   private async onLoadCallback(args: esbuild.OnLoadArgs): Promise<esbuild.OnLoadResult> {
     const extname = Path.extname(args.path)
     let contents = await Promise.resolve(this.resolver.filesResolver(args.path))
-    let loader = getLoaderByLang(extname);
+    let loader = getLoaderByLang(extname)
     // css content to js
     if (extname === '.css') {
       const name = args.path
       contents = css2Js(name, contents)
     }
-    return {contents, loader}
+    return { contents, loader }
   }
 }
