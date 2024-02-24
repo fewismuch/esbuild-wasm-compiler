@@ -3,7 +3,7 @@ import { Path } from '../path'
 import { cleanVersion, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
 
 export interface FilesResolver {
-  filesResolver(path: string): Promise<string> | string
+  getFileContent(path: string): Promise<string> | string
 }
 
 export interface CompilerOptions extends esbuild.InitializeOptions {
@@ -26,32 +26,6 @@ const DEFAULT_COMPILER_OPTIONS: CompilerOptions = {
   wasmURL: ESBUILD_WASM_URL,
   worker: true,
   wasmModule: undefined,
-}
-
-/**
- * files对象格式 文件解析器
- * @param files
- * @param path
- * @example const files = {
- *   "/index.ts": `
- *      import {count} from './count'
- *      const name = 'home'
- *   `,
- *   "/count":`export const count = 1`
- * }
- * @example kvFilesResolver(files,'/count')=>`export const count = 1`
- */
-export const kvFilesResolver = (files: Record<string, string>, path: string) => {
-  const getValueByKeyWithoutExtension = (files: any, keyWithoutExtension: string) => {
-    for (const key in files) {
-      if (key.startsWith(`${keyWithoutExtension}`)) {
-        return files[key]
-      }
-    }
-  }
-
-  const contents: string = getValueByKeyWithoutExtension(files, path)
-  return contents
 }
 
 export class Compiler {
@@ -174,7 +148,7 @@ export class Compiler {
 
   private async onLoadCallback(args: esbuild.OnLoadArgs): Promise<esbuild.OnLoadResult> {
     const extname = Path.extname(args.path)
-    let contents = await Promise.resolve(this.resolver.filesResolver(args.path))
+    let contents = await Promise.resolve(this.resolver.getFileContent(args.path))
     let loader = getLoaderByLang(extname)
     // css content to js
     if (extname === '.css') {
