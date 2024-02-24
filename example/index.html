@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <title>esbuild-wasm-demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/@rainetian/esbuild-wasm-compiler/dist/esbuild-wasm-compiler.min.js"></script>
+    <script src="../dist/esbuild-wasm-compiler.min.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      loading...
+    </div>
 
     <script>
       let Main = `
@@ -44,8 +46,6 @@
           return <button>{round(1.23456,2)}</button>
         }`;
 
-      const constCode = `export const name = 'abc';`;
-
       const indexCssCode = `.ty{color:red}`;
 
       const files = {
@@ -57,10 +57,19 @@
     </script>
     <script>
       const compiler = new Compiler({
-        filesResolver: path => {
-          return kvFilesResolver(files, path)
+        getFileContent: path => {
+          const filePath = Object.keys(files).find(item=>item.startsWith(path))
+          const content = filePath ? files[filePath] : null
+          if (!content) {
+            throw new Error("File not found");
+          }
+          return content;
         }
+      },{
+        wasmURL:'./esbuild.wasm'
       })
+
+      // 如果没有配置packageJson可以不执行插入Imports
       document.body.appendChild(compiler.getImportsScriptElement())
 
       const init = async () => {

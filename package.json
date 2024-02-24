@@ -1,6 +1,6 @@
 {
   "name": "@rainetian/esbuild-wasm-compiler",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "private": false,
   "description": "File Resolution for Esbuild running in the Browser",
   "keywords": [

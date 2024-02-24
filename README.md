@@ -6,17 +6,20 @@
 
 ## 介绍
 
-`esbuild-wasm-compiler`是`esbuild-wasm`的文件解析器。由于Web浏览器不能直接访问文件系统，`esbuild-wasm-compiler`在编译过程中拦截esbuild发出的文件“读”请求，允许应用程序从外部解析文件。通过这种机制，esbuild可以解析来自IndexedDB、LocalStorage、Http或任何其他浏览器可访问的可读设备的文件。
+`esbuild-wasm-compiler`是`esbuild-wasm`的文件解析器。由于Web浏览器不能直接访问文件系统，`esbuild-wasm-compiler`在编译过程中，允许应用程序从外部解析文件。
 
-`esbuild-wasm-compiler`主要提供给编辑器使用。
+使`esbuild-wasm`可以解析来自IndexedDB、LocalStorage、Http或任何其他浏览器可访问的可读设备的文件。
 
-参考了 [sinclairzx81/esbuild-wasm-resolve](https://github.com/sinclairzx81/esbuild-wasm-resolve) ，在此基础上添加了第三方依赖包解析和css文件解析，以及一些工具函数。
+`esbuild-wasm-compiler`主要提供给编辑器使用，或者在浏览器中编译执行项目代码。
 
 ## 安装
 
 ```bash
 $ npm install @rainetian/esbuild-wasm-compiler
 ```
+## 示例
+
+[//]: # (在浏览器中执行react项目)
 
 ## 使用
 
@@ -31,9 +34,14 @@ import {Compiler,kvFilesResolver} from '@rainetian/esbuild-wasm-compiler'
 import {files} from './files'
 
 const compiler = new Compiler({
-  filesResolver: path => {
-    return kvFilesResolver(files, path)
-  },
+  getFileContent: path => {
+    const filePath = Object.keys(files).find(item=>item.startsWith(path))
+    const content = filePath ? files[filePath] : null
+    if (!content) {
+      throw new Error("File not found");
+    }
+    return content;
+  }
 },{
   packageJson: JSON.parse(files["package.json"]),
 })
@@ -93,7 +101,7 @@ export const files = {
 
 ```typescript
 export interface FilesResolver {
-  filesResolver(path: string): Promise<string> | string;
+  getFileContent(path: string): Promise<string> | string;
 }
 export interface CompilerOptions extends esbuild.InitializeOptions {
   /**
@@ -105,20 +113,7 @@ export interface CompilerOptions extends esbuild.InitializeOptions {
    */
   replaceImports?: boolean;
 }
-/**
- * files对象格式 文件解析器
- * @param files
- * @param path
- * @example const files = {
- *   "/index.ts": `
- *      import {count} from './count'
- *      const name = 'home'
- *   `,
- *   "/count":`export const count = 1`
- * }
- * @example kvFilesResolver(files,'/count')=>`export const count = 1`
- */
-export declare const kvFilesResolver: (files: Record<string, string>, path: string) => string;
+
 export declare class Compiler {
   constructor(resolver: FilesResolver, options?: CompilerOptions | undefined);
   compile(entryPoint: string, options?: esbuild.BuildOptions): Promise<string>;
@@ -128,12 +123,8 @@ export declare class Compiler {
   getImportsScriptElement(): HTMLScriptElement;
 }
 
-// 默认esbuild-wasm url
-const ESBUILD_WASM_URL = 'https://esm.sh/esbuild-wasm@0.20.0/esbuild.wasm'
-
-
 ```
 
-## LICENSE
+## 参考
 
-MIT
+[sinclairzx81/esbuild-wasm-resolve](https://github.com/sinclairzx81/esbuild-wasm-resolve)
