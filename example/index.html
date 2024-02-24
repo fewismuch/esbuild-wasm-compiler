@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>esbuild-wasm-demo</title>
+    <!--<script src="https://cdn.jsdelivr.net/npm/@rainetian/esbuild-wasm-compiler/dist/esbuild-wasm-compiler.min.js"></script>-->
     <script src="../dist/esbuild-wasm-compiler.min.js"></script>
   </head>
   <body>
@@ -28,10 +29,10 @@
         import './index.css'
 
          const App = ()=>{
-          const [num,setNum]=React.useState<number>(1)
+          const [count,setCount]=React.useState<number>(1)
           return <>
-              <button onClick={()=>setNum(num+1)}>click</button>
-              <span className='ty'>{num}</span>
+              <button onClick={()=>setCount(count+1)}>click</button>
+              <div className='my-count'>count:{count}</div>
               <Button/>
             </>
         }
@@ -40,13 +41,13 @@
 
       const ButtonCode = `
         import React from 'react'
-        import {round} from 'lodash-es'
+        import {random} from 'lodash-es'
 
         export const Button = ()=>{
-          return <button>{round(1.23456,2)}</button>
+          return <button>this is a btn comp, random: {random(1,100)}</button>
         }`;
 
-      const indexCssCode = `.ty{color:red}`;
+      const indexCssCode = `.my-count{color:red}`;
 
       const files = {
         "/main.tsx": Main,
@@ -55,6 +56,7 @@
         "/index.css": indexCssCode,
       };
     </script>
+
     <script>
       const compiler = new Compiler({
         getFileContent: path => {
