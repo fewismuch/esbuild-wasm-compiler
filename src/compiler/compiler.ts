@@ -1,6 +1,6 @@
 import * as esbuild from 'esbuild-wasm'
 import { Path } from '../path'
-import { cleanVersion, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
+import { css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
 
 export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string
@@ -11,10 +11,6 @@ export interface CompilerOptions extends esbuild.InitializeOptions {
    * package.json文件内容
    */
   packageJson?: Record<string, any>
-  /**
-   * 是否替换第三方依赖包包名为importMap中的url，默认true
-   */
-  replaceImports?: boolean
 }
 
 /**
@@ -40,7 +36,7 @@ export class Compiler {
     esbuild
       .initialize({
         ...DEFAULT_COMPILER_OPTIONS,
-        ...omit(options, ['packageJson', 'replaceImports']),
+        ...omit(options, ['packageJson']),
       })
       .then(() => {
         this.initialized = true
@@ -91,52 +87,39 @@ export class Compiler {
     }
   }
 
-  /**
-   * 获取importmap script标签
-   */
-  public getImportsScriptElement() {
-    const importmap: Record<string, string> = {}
-    const packageJson = this.options?.packageJson
-    if (packageJson) {
-      const dependencies: Record<string, string> = packageJson.dependencies
-      Object.keys(dependencies).forEach((key) => {
-        importmap[key] = `https://esm.sh/${key}@${cleanVersion(dependencies[key])}`
-      })
-    }
-    const script = document.createElement('script')
-    script.type = 'importmap'
-    script.innerHTML = JSON.stringify({ imports: importmap })
-    return script
-  }
-
   private async onResolveCallback(args: esbuild.OnResolveArgs) {
     if (args.kind === 'entry-point') {
       return { path: '/' + args.path }
     }
     if (args.kind === 'import-statement') {
-      const esmName = args.path.split('/')[0]
-
       // 第三方依赖包
       if (!args.path.startsWith('.')) {
         let modulePath = ''
         const packageJson = this.options?.packageJson
-        if (packageJson && this.options?.replaceImports !== false) {
+        if (packageJson) {
           const dependencies = packageJson.dependencies
-          modulePath = getEsmUrl(esmName, cleanVersion(dependencies[esmName]))
+          modulePath = getEsmUrl(dependencies, args.path)
+          if (modulePath.endsWith('.css')) {
+            return {
+              path: '/' + modulePath,
+            }
+          }
           return {
             path: modulePath,
             external: true,
           }
-        } else if (this.options?.replaceImports !== false) {
+        } else {
           // 没有配置packageJson，默认使用cdn最新版
+          const modulePath = getEsmUrl(null, args.path)
+          if (modulePath.endsWith('.css')) {
+            return {
+              path: '/' + modulePath,
+            }
+          }
           return {
-            path: getEsmUrl(esmName),
+            path: modulePath,
             external: true,
           }
-        }
-        return {
-          path: esmName,
-          external: true,
         }
       }
       const dirname = Path.dirname(args.importer)
@@ -148,12 +131,14 @@ export class Compiler {
 
   private async onLoadCallback(args: esbuild.OnLoadArgs): Promise<esbuild.OnLoadResult> {
     const extname = Path.extname(args.path)
-    let contents = await Promise.resolve(this.resolver.getFileContent(args.path))
+    let contents = ''
+    if (!args.path.startsWith('/http'))
+      contents = await Promise.resolve(this.resolver.getFileContent(args.path))
     let loader = getLoaderByLang(extname)
     // css content to js
     if (extname === '.css') {
       const name = args.path
-      contents = css2Js(name, contents)
+      contents = await css2Js(name, contents)
     }
     return { contents, loader }
   }

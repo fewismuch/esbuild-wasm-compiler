@@ -1,14 +1,10 @@
 import * as esbuild from 'esbuild-wasm'
 
-export const cleanVersion = (version: string) => {
-  const prefixes = ['^', '~', 'latest', '=', '>', '>=', '<=', '<', '*']
-  prefixes.forEach((item) => {
-    version = version.replace(item, '')
-  })
-  return version
-}
-
-export const css2Js = (name: string, value: string) => {
+export const css2Js = async (name: string, value?: string) => {
+  let cssCode = value
+  if (name.startsWith('/http')) {
+    cssCode = await fetch(name.replace('/', '')).then((res) => res.text())
+  }
   const randomId = new Date().getTime()
   return `(() => {
             let stylesheet = document.getElementById('style_${randomId}_${name}');
@@ -17,7 +13,7 @@ export const css2Js = (name: string, value: string) => {
               stylesheet.setAttribute('id', 'style_${randomId}_${name}')
               document.head.appendChild(stylesheet)
             }
-            const styles = document.createTextNode(\`${value}\`)
+            const styles = document.createTextNode(\`${cssCode}\`)
             stylesheet.innerHTML = ''
             stylesheet.appendChild(styles)
           })()`
@@ -54,10 +50,51 @@ export const omit = (obj = {}, props: string[]) => {
   return Object.fromEntries(Object.entries(obj).filter(([key]) => !props.includes(key)))
 }
 
-export const getEsmUrl = (name: string, version?: string) => {
-  if (version) {
-    return `https://esm.sh/${name}@${version}`
+export const getEsmName = (dependencies: Record<string, string> | null, importName: string) => {
+  if (importName.startsWith('@')) {
+    // @a/b/c
+    if (!dependencies?.[importName]) {
+      let pkgName = ''
+      const secondSlashIndex = importName.indexOf('/', importName.indexOf('/') + 1)
+      if (secondSlashIndex !== -1) {
+        // 第二个'/'之前的字符 -> @a/b
+        pkgName = importName.substring(0, secondSlashIndex)
+        return pkgName
+      }
+      return importName
+    } else {
+      return importName
+    }
   } else {
-    return `https://esm.sh/${name}`
+    // @a/b
+    return importName.split('/')[0]
+  }
+}
+
+export const getEsmVersion = (dependencies: Record<string, string> | null, pkgName: string) => {
+  let version = dependencies?.[pkgName] || ''
+  const prefixes = ['^', '~', 'latest', '=', '>', '>=', '<=', '<', '*']
+  prefixes.forEach((item) => {
+    version = version.replace(item, '')
+  })
+  return version
+}
+
+// 生成esm地址
+export const getEsmUrl = (dependencies: Record<string, string> | null, path: string) => {
+  const esmName = getEsmName(dependencies, path)
+  const version = getEsmVersion(dependencies, esmName)
+
+  if (['react', 'react-dom'].includes(esmName)) {
+    return `https://esm.sh/stable/${esmName}`
+  }
+  if (version) {
+    // 处理类似这种资源导入  import '@rainetian/file-explorer/dist/FileExplorer/index.css'
+    if (!![dependencies?.[esmName]])
+      return `https://esm.sh/${esmName}@${version}${path.replace(esmName, '')}`
+    return `https://esm.sh/${esmName}@${version}`
+  } else {
+    if (path.length > esmName.length) return `https://esm.sh/${path}`
+    return `https://esm.sh/${esmName}`
   }
 }
