@@ -15,8 +15,13 @@
 ## 安装
 
 ```bash
-$ npm install @rainetian/esbuild-wasm-compiler
+npm install @rainetian/esbuild-wasm-compiler
 ```
+or
+```html
+<script src="https://cdn.jsdelivr.net/npm/@rainetian/esbuild-wasm-compiler/dist/esbuild-wasm-compiler.min.js"></script>
+```
+
 ## 示例
 
 [//]: # (在浏览器中执行react项目)
@@ -59,6 +64,10 @@ import {Compiler} from '@rainetian/esbuild-wasm-compiler'
 Compiler.createApp('./main.tsx').mount('#root')
 ```
 
+🔥现已支持vue
+
+[example3](https://github.com/fewismuch/esbuild-wasm-compiler/blob/main/example/demo3/index.html)
+
 
 ## 配置项
 
@@ -79,7 +88,7 @@ export declare class Compiler {
     error: boolean;
     message: string;
   }>;
-  static createApp(path: string): Compiler;
+  static createApp(path: string, packageJsonPath?: string): Compiler;
 }
 ```
 
