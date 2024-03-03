@@ -39,6 +39,9 @@ export const getLoaderByLang = (lang: string) => {
       break
     case '.css':
       loader = 'js'
+    case '.vue':
+      loader = 'ts'
+      break
     default:
       loader = 'tsx'
       break
@@ -86,7 +89,7 @@ export const getEsmUrl = (dependencies: Record<string, string> | null, path: str
   const version = getEsmVersion(dependencies, esmName)
 
   if (['react', 'react-dom'].includes(esmName)) {
-    return `https://esm.sh/stable/${esmName}`
+    return `https://esm.sh/stable/${esmName}@18.2.0`
   }
   if (version) {
     // 处理类似这种资源导入  import '@rainetian/file-explorer/dist/FileExplorer/index.css'

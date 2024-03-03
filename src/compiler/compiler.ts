@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild-wasm'
 import { Path } from '../path'
 import { beforeTransformCodeHandler, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
+import { compileFile } from './vue.compiler'
 
 export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string
@@ -28,6 +29,7 @@ export class Compiler {
   private readonly decoder: TextDecoder
   private initialized: boolean = false
   private mount: ((selector: string) => Promise<void>) | undefined
+  private static instance: Compiler | null = null
 
   constructor(
     private readonly resolver: FilesResolver,
@@ -97,7 +99,7 @@ export class Compiler {
       const name = args.path
       contents = await css2Js(name, contents)
     }
-    if (['.jsx', '.tsx']) {
+    if (['.jsx', '.tsx'].includes(extname)) {
       contents = beforeTransformCodeHandler(contents)
     }
     return { contents, loader }
@@ -147,27 +149,40 @@ export class Compiler {
     }
   }
 
-  // Compiler.createApp('./main.tsx').mount('#root')
   public static createApp(path: string) {
-    const compiler = new Compiler({
-      getFileContent: async (path) => {
-        const content = await fetch(`.${path}`).then((res) => {
-          if (!res.ok) {
-            throw new Error('File not found')
+    if (!Compiler.instance) {
+      Compiler.instance = new Compiler({
+        getFileContent: async (path) => {
+          const content = await fetch(`.${path}`).then((res) => {
+            if (!res.ok) {
+              throw new Error('File not found')
+            }
+            return res.text()
+          })
+          if (path.endsWith('.vue')) {
+            const fileName = Path.basename(path)
+            const vueCode = await compileFile(fileName, content.trim())
+            if (!Array.isArray(vueCode)) {
+              const { js, css } = vueCode
+              const style = await css2Js(fileName, css)
+              return js + ';\n' + style
+            } else {
+              // vue编译异常处理
+              return ''
+            }
           }
-          return res.text()
-        })
-        return content
-      },
-    })
+          return content
+        },
+      })
+    }
 
-    compiler.mount = async (selector: string) => {
+    Compiler.instance.mount = async (selector: string) => {
       const root = document.querySelector(selector)
       if (!root) {
         throw new Error('Root element not found')
       }
-      const code = await compiler.compile(path)
-      if (typeof code !== 'string' && code.error) {
+      const code = await Compiler.instance?.compile(path)
+      if (code && typeof code !== 'string' && code.error) {
         root.innerHTML = code.message
         return
       }
@@ -178,6 +193,7 @@ export class Compiler {
         document.body.appendChild(script)
       }
     }
-    return compiler
+
+    return Compiler.instance
   }
 }
