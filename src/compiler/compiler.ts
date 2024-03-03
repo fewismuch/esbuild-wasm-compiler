@@ -1,6 +1,6 @@
 import * as esbuild from 'esbuild-wasm'
 import { Path } from '../path'
-import { css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
+import { beforeTransformCodeHandler, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
 
 export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string
@@ -27,6 +27,7 @@ const DEFAULT_COMPILER_OPTIONS: CompilerOptions = {
 export class Compiler {
   private readonly decoder: TextDecoder
   private initialized: boolean = false
+  private mount: ((selector: string) => Promise<void>) | undefined
 
   constructor(
     private readonly resolver: FilesResolver,
@@ -41,50 +42,6 @@ export class Compiler {
       .then(() => {
         this.initialized = true
       })
-  }
-
-  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
-    while (!this.initialized) {
-      // Wait until initialization is complete
-      await new Promise((resolve) => setTimeout(resolve, 16))
-    }
-
-    let result
-    try {
-      result = await esbuild.build({
-        entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
-        plugins: [
-          {
-            name: 'browserResolve',
-            setup: (build) => {
-              build.onResolve({ filter: /.*/ }, async (args) => this.onResolveCallback(args))
-              build.onLoad({ filter: /.*/ }, (args) => this.onLoadCallback(args))
-            },
-          },
-          ...(options.plugins || []),
-        ],
-        sourcemap: 'inline',
-        target: 'es2015',
-        platform: 'browser',
-        format: 'esm',
-        ...omit(options, ['plugins']),
-        // required
-        bundle: true,
-        write: false,
-      })
-      const contents = result.outputFiles![0].contents
-      return this.decoder.decode(contents)
-    } catch (e: any) {
-      let formatted = await esbuild.formatMessages(e.errors, {
-        kind: 'error',
-        color: false,
-        terminalWidth: 100,
-      })
-      return {
-        error: true,
-        message: formatted.join('\n'),
-      }
-    }
   }
 
   private async onResolveCallback(args: esbuild.OnResolveArgs) {
@@ -140,6 +97,87 @@ export class Compiler {
       const name = args.path
       contents = await css2Js(name, contents)
     }
+    if (['.jsx', '.tsx']) {
+      contents = beforeTransformCodeHandler(contents)
+    }
     return { contents, loader }
+  }
+
+  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
+    while (!this.initialized) {
+      // Wait until initialization is complete
+      await new Promise((resolve) => setTimeout(resolve, 16))
+    }
+
+    let result
+    try {
+      result = await esbuild.build({
+        entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
+        plugins: [
+          {
+            name: 'browserResolve',
+            setup: (build) => {
+              build.onResolve({ filter: /.*/ }, async (args) => this.onResolveCallback(args))
+              build.onLoad({ filter: /.*/ }, (args) => this.onLoadCallback(args))
+            },
+          },
+          ...(options.plugins || []),
+        ],
+        sourcemap: 'inline',
+        target: 'es2015',
+        platform: 'browser',
+        format: 'esm',
+        ...omit(options, ['plugins']),
+        // required
+        bundle: true,
+        write: false,
+      })
+      const contents = result.outputFiles![0].contents
+      return this.decoder.decode(contents)
+    } catch (e: any) {
+      let formatted = await esbuild.formatMessages(e.errors, {
+        kind: 'error',
+        color: false,
+        terminalWidth: 100,
+      })
+      return {
+        error: true,
+        message: formatted.join('\n'),
+      }
+    }
+  }
+
+  // Compiler.createApp('./main.tsx').mount('#root')
+  public static createApp(path: string) {
+    const compiler = new Compiler({
+      getFileContent: async (path) => {
+        const content = await fetch(`.${path}`).then((res) => {
+          if (!res.ok) {
+            throw new Error('File not found')
+          }
+          return res.text()
+        })
+        return content
+      },
+    })
+
+    compiler.mount = async (selector: string) => {
+      const root = document.querySelector(selector)
+      if (!root) {
+        throw new Error('Root element not found')
+      }
+      const code = await compiler.compile(path)
+      if (typeof code !== 'string' && code.error) {
+        root.innerHTML = code.message
+        return
+      }
+      if (typeof code === 'string') {
+        const script = document.createElement('script')
+        script.type = 'module'
+        script.innerHTML = code
+        document.body.appendChild(script)
+      }
+    }
+    return compiler
   }
 }

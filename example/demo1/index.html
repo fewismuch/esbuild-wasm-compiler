@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>esbuild-wasm-demo</title>
+    <!--<script src="https://cdn.jsdelivr.net/npm/@rainetian/esbuild-wasm-compiler/dist/esbuild-wasm-compiler.min.js"></script>-->
+    <script src="../../dist/esbuild-wasm-compiler.min.js"></script>
+  </head>
+  <body>
+    <div id="root">loading...</div>
+
+    <script>
+      let Main = `
+        import React from 'react'
+        import ReactDOM from 'react-dom/client'
+        import App from './App'
+
+        ReactDOM.createRoot(document.getElementById('root')!).render(
+          <React.StrictMode>
+            <App />
+          </React.StrictMode>
+        )
+    `
+      let AppCode = `
+        import React from 'react'
+        import {Button} from './Button'
+        import './index.css'
+
+         const App = ()=>{
+          const [count,setCount]=React.useState<number>(1)
+          return <>
+              <button onClick={()=>setCount(count+1)}>click</button>
+              <div className='my-count'>count:{count}</div>
+              <Button/>
+            </>
+        }
+        export default App
+        `
+
+      const ButtonCode = `
+        import React from 'react'
+        import {random} from 'lodash-es'
+
+        export const Button = ()=>{
+          return <button>this is a btn comp, random: {random(1,100)}</button>
+        }`
+
+      const indexCssCode = `.my-count{color:red}`
+
+      const files = {
+        '/main.tsx': Main,
+        '/App.tsx': AppCode,
+        '/Button.tsx': ButtonCode,
+        '/index.css': indexCssCode,
+      }
+    </script>
+
+    <script>
+      const compiler = new Compiler(
+        {
+          getFileContent: (path) => {
+            const filePath = Object.keys(files).find((item) => item.startsWith(path))
+            const content = filePath ? files[filePath] : null
+            if (!content) {
+              throw new Error('File not found')
+            }
+            return content
+          },
+        },
+        {
+          wasmURL: '../esbuild.wasm',
+        }
+      )
+
+      const init = async () => {
+        const code = await compiler.compile('/main.tsx')
+        console.log(code)
+        // 编译报错信息
+        if (typeof code !== 'string' && code.error) {
+          document.querySelector('#root').innerHTML = code.message
+          return
+        }
+        const script = document.createElement('script')
+        script.type = 'module'
+        script.innerHTML = code
+        document.body.appendChild(script)
+      }
+
+      init()
+    </script>
+  </body>
+</html>

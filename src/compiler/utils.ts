@@ -98,3 +98,13 @@ export const getEsmUrl = (dependencies: Record<string, string> | null, path: str
     return `https://esm.sh/${esmName}`
   }
 }
+
+export const beforeTransformCodeHandler = (code: string) => {
+  let _code = code
+  // 如果没有引入React，开头添加React引用
+  const regexReact = /import\s+React/g
+  if (!regexReact.test(code)) {
+    _code = `import React from 'react';\n${code}`
+  }
+  return _code
+}

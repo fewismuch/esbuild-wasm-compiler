@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>esbuild-wasm-demo</title>
+  </head>
+  <body>
+    <div id="root">loading...</div>
+    <!--<script src="https://cdn.jsdelivr.net/npm/@rainetian/esbuild-wasm-compiler/dist/esbuild-wasm-compiler.min.js"></script>-->
+    <script src="../../dist/esbuild-wasm-compiler.min.js"></script>
+    <script>
+      <!-- Compiler.createApp静态方法内置了读取当前文件夹文件的FilesResolver，简化使用，也可同demo1一样自定义 -->
+      Compiler.createApp('./main.tsx').mount('#root')
+    </script>
+  </body>
+</html>

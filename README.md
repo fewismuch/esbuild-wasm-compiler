@@ -2,7 +2,7 @@
 
 ![NPM version](https://img.shields.io/npm/v/@rainetian/esbuild-wasm-compiler.svg?style=flat)
 
-一个运行在浏览器中`esbuild-wasm`的文件解析器
+一个运行在浏览器中打包编译器，基于`esbuild-wasm`
 
 ## 介绍
 
@@ -10,7 +10,7 @@
 
 使`esbuild-wasm`可以解析来自IndexedDB、LocalStorage、Http或任何其他浏览器可访问的可读设备的文件。
 
-`esbuild-wasm-compiler`主要提供给编辑器使用，或者在浏览器中编译执行项目代码。
+`esbuild-wasm-compiler`主要提供给编辑器使用，或者示例演示，或者在浏览器中编译执行项目代码。
 
 ## 安装
 
@@ -21,16 +21,12 @@ $ npm install @rainetian/esbuild-wasm-compiler
 
 [//]: # (在浏览器中执行react项目)
 
-## 使用
+#### 从js对象中读取文件
 
-### html中使用
-
-[example](https://github.com/fewismuch/esbuild-wasm-compiler/blob/main/example/index.html)
-
-### 项目中使用
+[example](https://github.com/fewismuch/esbuild-wasm-compiler/blob/main/example/demo1/index.html)
 
 ```javascript
-import {Compiler,kvFilesResolver} from '@rainetian/esbuild-wasm-compiler'
+import {Compiler} from '@rainetian/esbuild-wasm-compiler'
 import {files} from './files'
 
 const compiler = new Compiler({
@@ -52,50 +48,17 @@ console.log(code);
 
 ```
 
-`./files`
+#### 从文件系统中读取文件
+
+[example2](https://github.com/fewismuch/esbuild-wasm-compiler/blob/main/example/demo2/index.html)
+
 
 ```javascript
-const AppCode = `
-import React from 'react'
-import ReactDOM from 'react-dom/client'
+import {Compiler} from '@rainetian/esbuild-wasm-compiler'
 
-const App = () => {
-  const [num, setNum] = React.useState<number>(1)
-  return <>
-    <button onClick={() => setNum(num + 1)}>click</button>
-    <span>{num}</span>
-  </>
-}
-ReactDOM.render(<App/>, document.getElementById("root"));
-`;
-
-const packageJson = `
-{
-    "name": "react-ts",
-    "version": "0.0.1",
-    "private": true,
-    "dependencies": {
-        "react": "^18.1.0",
-        "react-dom": "^18.1.0"
-    },
-    "scripts": {
-        "start": "react-scripts start",
-        "build": "react-scripts build",
-        "test": "react-scripts test --env=jsdom",
-        "eject": "react-scripts eject"
-    },
-    "devDependencies": {
-        "react-scripts": "latest",
-        "typescript": "latest"
-    }
-}
-`
-
-export const files = {
-  "/App.tsx": AppCode,
-  "package.json":packageJson
-};
+Compiler.createApp('./main.tsx').mount('#root')
 ```
+
 
 ## 配置项
 
@@ -103,26 +66,21 @@ export const files = {
 export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string;
 }
+
 export interface CompilerOptions extends esbuild.InitializeOptions {
   /**
    * package.json文件内容
    */
   packageJson?: Record<string, any>;
-  /**
-   * 是否替换第三方依赖包包名为importMap中的url，默认true
-   */
-  replaceImports?: boolean;
 }
-
 export declare class Compiler {
   constructor(resolver: FilesResolver, options?: CompilerOptions | undefined);
-  compile(entryPoint: string, options?: esbuild.BuildOptions): Promise<string>;
-  /**
-   * 获取importmap script标签
-   */
-  getImportsScriptElement(): HTMLScriptElement;
+  compile(entryPoint: string, options?: esbuild.BuildOptions): Promise<string | {
+    error: boolean;
+    message: string;
+  }>;
+  static createApp(path: string): Compiler;
 }
-
 ```
 
 ## 参考
