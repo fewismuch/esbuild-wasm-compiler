@@ -7,11 +7,17 @@ export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string
 }
 
+export interface IPackageJson {
+  dependencies?: Record<string, string>
+
+  [propName: string]: any
+}
+
 export interface CompilerOptions extends esbuild.InitializeOptions {
   /**
    * package.json文件内容
    */
-  packageJson?: Record<string, any>
+  packageJson?: IPackageJson
 }
 
 /**
@@ -46,7 +52,7 @@ export class Compiler {
       })
   }
 
-  private async onResolveCallback(args: esbuild.OnResolveArgs) {
+  private async onResolveCallback(args: esbuild.OnResolveArgs, pkgJson?: IPackageJson) {
     if (args.kind === 'entry-point') {
       return { path: '/' + args.path }
     }
@@ -54,10 +60,10 @@ export class Compiler {
       // 第三方依赖包
       if (!args.path.startsWith('.')) {
         let modulePath = ''
-        const packageJson = this.options?.packageJson
+        let packageJson = pkgJson || this.options?.packageJson
         if (packageJson) {
           const dependencies = packageJson.dependencies
-          modulePath = getEsmUrl(dependencies, args.path)
+          modulePath = getEsmUrl(dependencies || null, args.path)
           if (modulePath.endsWith('.css')) {
             return {
               path: '/' + modulePath,
@@ -105,7 +111,11 @@ export class Compiler {
     return { contents, loader }
   }
 
-  public async compile(entryPoint: string, options: esbuild.BuildOptions = {}) {
+  public async compile(
+    entryPoint: string,
+    options: esbuild.BuildOptions = {},
+    packageJson?: IPackageJson
+  ) {
     while (!this.initialized) {
       // Wait until initialization is complete
       await new Promise((resolve) => setTimeout(resolve, 16))
@@ -119,7 +129,9 @@ export class Compiler {
           {
             name: 'browserResolve',
             setup: (build) => {
-              build.onResolve({ filter: /.*/ }, async (args) => this.onResolveCallback(args))
+              build.onResolve({ filter: /.*/ }, async (args) =>
+                this.onResolveCallback(args, packageJson)
+              )
               build.onLoad({ filter: /.*/ }, (args) => this.onLoadCallback(args))
             },
           },
@@ -149,7 +161,7 @@ export class Compiler {
     }
   }
 
-  public static createApp(path: string) {
+  public static createApp(path: string, packageJsonPath?: string) {
     if (!Compiler.instance) {
       Compiler.instance = new Compiler({
         getFileContent: async (path) => {
@@ -181,7 +193,16 @@ export class Compiler {
       if (!root) {
         throw new Error('Root element not found')
       }
-      const code = await Compiler.instance?.compile(path)
+      // 获取package.json文件内容
+      let packageJson
+      if (packageJsonPath) {
+        const packageJsonText = await fetch(`${packageJsonPath}`).then((res) => {
+          if (!res.ok) throw new Error('File not found')
+          return res.text()
+        })
+        packageJson = JSON.parse(packageJsonText)
+      }
+      const code = await Compiler.instance?.compile(path, {}, packageJson)
       if (code && typeof code !== 'string' && code.error) {
         root.innerHTML = code.message
         return

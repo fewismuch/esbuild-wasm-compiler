@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { random } from 'lodash-es'
 
 const count = ref<number>(0)
+
+console.log(random(1, 10))
 </script>
 
 <template>
