@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild-wasm'
+import { compileFile } from './vue.compiler'
 
 export const css2Js = async (name: string, value?: string) => {
   let cssCode = value
@@ -110,4 +111,16 @@ export const beforeTransformCodeHandler = (code: string) => {
     _code = `import React from 'react';\n${code}`
   }
   return _code
+}
+
+export const transformVueCode = async (fileName: string, contents: string) => {
+  const vueCode = await compileFile(fileName, contents.trim())
+  if (!Array.isArray(vueCode)) {
+    const { js, css } = vueCode
+    const style = await css2Js(fileName, css)
+    return js + ';\n' + style
+  } else {
+    // vue编译异常处理
+    return contents
+  }
 }

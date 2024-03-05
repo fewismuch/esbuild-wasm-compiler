@@ -1,7 +1,13 @@
 import * as esbuild from 'esbuild-wasm'
 import { Path } from '../path'
-import { beforeTransformCodeHandler, css2Js, getEsmUrl, getLoaderByLang, omit } from './utils'
-import { compileFile } from './vue.compiler'
+import {
+  beforeTransformCodeHandler,
+  transformVueCode,
+  css2Js,
+  getEsmUrl,
+  getLoaderByLang,
+  omit,
+} from './utils'
 
 export interface FilesResolver {
   getFileContent(path: string): Promise<string> | string
@@ -14,9 +20,6 @@ export interface IPackageJson {
 }
 
 export interface CompilerOptions extends esbuild.InitializeOptions {
-  /**
-   * package.json文件内容
-   */
   packageJson?: IPackageJson
 }
 
@@ -99,6 +102,10 @@ export class Compiler {
     let contents = ''
     if (!args.path.startsWith('/http'))
       contents = await Promise.resolve(this.resolver.getFileContent(args.path))
+    if (extname === '.vue') {
+      const fileName = Path.basename(args.path)
+      contents = await transformVueCode(fileName, contents)
+    }
     let loader = getLoaderByLang(extname)
     // css content to js
     if (extname === '.css') {
@@ -165,7 +172,7 @@ export class Compiler {
     if (!Compiler.instance) {
       Compiler.instance = new Compiler({
         getFileContent: async (path) => {
-          const content = await fetch(`.${path}`).then((res) => {
+          const contents = await fetch(`.${path}`).then((res) => {
             if (!res.ok) {
               throw new Error('File not found')
             }
@@ -173,17 +180,9 @@ export class Compiler {
           })
           if (path.endsWith('.vue')) {
             const fileName = Path.basename(path)
-            const vueCode = await compileFile(fileName, content.trim())
-            if (!Array.isArray(vueCode)) {
-              const { js, css } = vueCode
-              const style = await css2Js(fileName, css)
-              return js + ';\n' + style
-            } else {
-              // vue编译异常处理
-              return ''
-            }
+            return await transformVueCode(fileName, contents)
           }
-          return content
+          return contents
         },
       })
     }
@@ -216,5 +215,35 @@ export class Compiler {
     }
 
     return Compiler.instance
+  }
+
+  public static getFileContent(path: string, files: Record<string, string>) {
+    const filePath = Object.keys(files).find((item) => item.startsWith(path))
+    const content = filePath ? files[filePath] : null
+    if (!content) {
+      throw new Error('File not found')
+    }
+    return content
+  }
+
+  public createApp(path: string) {
+    this.mount = async (selector: string) => {
+      const code = await this.compile(path)
+      if (typeof code !== 'string' && code.error) {
+        const root = document.querySelector(selector)
+        if (!root) {
+          throw new Error('Root element not found')
+        }
+        root.innerHTML = code.message
+        return
+      }
+      const script = document.createElement('script')
+      script.type = 'module'
+      if (typeof code === 'string') {
+        script.innerHTML = code
+      }
+      document.body.appendChild(script)
+    }
+    return this
   }
 }
