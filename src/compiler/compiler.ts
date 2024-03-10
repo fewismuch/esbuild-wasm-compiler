@@ -7,6 +7,7 @@ import {
   getEsmUrl,
   getLoaderByLang,
   omit,
+  ESBUILD_WASM_URL,
 } from './utils'
 
 export interface FilesResolver {
@@ -22,11 +23,6 @@ export interface IPackageJson {
 export interface CompilerOptions extends esbuild.InitializeOptions {
   packageJson?: IPackageJson
 }
-
-/**
- * esbuild.wasm 默认文件地址
- */
-const ESBUILD_WASM_URL = 'https://esm.sh/esbuild-wasm@0.20.0/esbuild.wasm'
 
 const DEFAULT_COMPILER_OPTIONS: CompilerOptions = {
   wasmURL: ESBUILD_WASM_URL,

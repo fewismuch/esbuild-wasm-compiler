@@ -1,6 +1,12 @@
 import * as esbuild from 'esbuild-wasm'
 import { compileFile } from './vue.compiler'
 
+// 字节 https://pdn.zijieapi.com/esm/bv
+const ESM_SERVER = 'https://esm.sh'
+
+// esbuild.wasm 默认文件地址
+export const ESBUILD_WASM_URL = `${ESM_SERVER}/esbuild-wasm@0.20.0/esbuild.wasm`
+
 export const css2Js = async (name: string, value?: string) => {
   let cssCode = value
   if (name.startsWith('/http')) {
@@ -90,16 +96,16 @@ export const getEsmUrl = (dependencies: Record<string, string> | null, path: str
   const version = getEsmVersion(dependencies, esmName)
 
   if (['react', 'react-dom'].includes(esmName)) {
-    return `https://esm.sh/stable/${esmName}@18.2.0`
+    return `${ESM_SERVER}/stable/${esmName}@18.2.0`
   }
   if (version) {
     // 处理类似这种资源导入  import '@rainetian/file-explorer/dist/FileExplorer/index.css'
     if (!![dependencies?.[esmName]])
-      return `https://esm.sh/${esmName}@${version}${path.replace(esmName, '')}`
-    return `https://esm.sh/${esmName}@${version}`
+      return `${ESM_SERVER}/${esmName}@${version}${path.replace(esmName, '')}`
+    return `${ESM_SERVER}/${esmName}@${version}`
   } else {
-    if (path.length > esmName.length) return `https://esm.sh/${path}`
-    return `https://esm.sh/${esmName}`
+    if (path.length > esmName.length) return `${ESM_SERVER}/${path}`
+    return `${ESM_SERVER}/${esmName}`
   }
 }
 
