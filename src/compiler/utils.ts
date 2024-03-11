@@ -98,7 +98,7 @@ export const getEsmUrl = (
   const version = getEsmVersion(dependencies, esmName)
 
   if (['react', 'react-dom'].includes(esmName)) {
-    return `${esmServerUrl}/stable/${esmName}@18.2.0`
+    return `${esmServerUrl}/${esmName}@18.2.0`
   }
   if (version) {
     // 处理类似这种资源导入  import '@rainetian/file-explorer/dist/FileExplorer/index.css'
