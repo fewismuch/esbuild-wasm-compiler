@@ -73,7 +73,7 @@ export class Compiler {
           }
         } else {
           // 没有配置packageJson，默认使用cdn最新版
-          const modulePath = getEsmUrl(null, args.path)
+          const modulePath = getEsmUrl(null, args.path, this.esmServiceUrl)
           if (modulePath.endsWith('.css')) {
             return {
               path: '/' + modulePath,
