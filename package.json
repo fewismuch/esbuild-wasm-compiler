@@ -1,6 +1,6 @@
 {
   "name": "@rainetian/esbuild-wasm-compiler",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "private": false,
   "description": "File Resolution for Esbuild running in the Browser",
   "keywords": [
@@ -31,7 +31,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@vue/compiler-sfc": "^3.4.21",
+    "@vue/compiler-sfc": "3.4.21",
     "esbuild-wasm": "0.20.0"
   },
   "devDependencies": {
