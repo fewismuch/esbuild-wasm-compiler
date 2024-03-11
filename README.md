@@ -77,10 +77,10 @@ export interface FilesResolver {
 }
 
 export interface CompilerOptions extends esbuild.InitializeOptions {
-  /**
-   * package.json文件内容
-   */
+  // package.json文件内容
   packageJson?: Record<string, any>;
+  // esm服务地址
+  esmServiceUrl?: string
 }
 export declare class Compiler {
   constructor(resolver: FilesResolver, options?: CompilerOptions | undefined);

@@ -7,7 +7,7 @@ import {
   getEsmUrl,
   getLoaderByLang,
   omit,
-  ESBUILD_WASM_URL,
+  ESM_SERVER_URL,
 } from './utils'
 
 export interface FilesResolver {
@@ -22,29 +22,28 @@ export interface IPackageJson {
 
 export interface CompilerOptions extends esbuild.InitializeOptions {
   packageJson?: IPackageJson
-}
-
-const DEFAULT_COMPILER_OPTIONS: CompilerOptions = {
-  wasmURL: ESBUILD_WASM_URL,
-  worker: true,
-  wasmModule: undefined,
+  esmServiceUrl?: string
 }
 
 export class Compiler {
   private readonly decoder: TextDecoder
   private initialized: boolean = false
-  private mount: ((selector: string) => Promise<void>) | undefined
   private static instance: Compiler | null = null
+  private mount: ((selector: string) => Promise<void>) | undefined
+  private esmServiceUrl: string
 
   constructor(
     private readonly resolver: FilesResolver,
     private readonly options?: CompilerOptions
   ) {
+    this.esmServiceUrl = options?.esmServiceUrl || ESM_SERVER_URL
     this.decoder = new TextDecoder()
     esbuild
       .initialize({
-        ...DEFAULT_COMPILER_OPTIONS,
-        ...omit(options, ['packageJson']),
+        wasmURL: `${ESM_SERVER_URL}/esbuild-wasm@0.20.0/esbuild.wasm`,
+        worker: true,
+        wasmModule: undefined,
+        ...omit(options, ['packageJson', 'esmServiceUrl']),
       })
       .then(() => {
         this.initialized = true
@@ -138,13 +137,13 @@ export class Compiler {
               build.onLoad({ filter: /.*/ }, (args) => this.onLoadCallback(args))
             },
           },
-          ...(options.plugins || []),
+          ...(options?.plugins || []),
         ],
         sourcemap: 'inline',
         target: 'es2015',
         platform: 'browser',
         format: 'esm',
-        ...omit(options, ['plugins']),
+        ...omit(options, ['plugins', 'esmServiceUrl', 'packageJson']),
         // required
         bundle: true,
         write: false,
@@ -184,6 +183,7 @@ export class Compiler {
     }
 
     Compiler.instance.mount = async (selector: string) => {
+      // TODO 改成创建iframe sandbox
       const root = document.querySelector(selector)
       if (!root) {
         throw new Error('Root element not found')
