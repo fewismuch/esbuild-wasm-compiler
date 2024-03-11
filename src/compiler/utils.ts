@@ -1,7 +1,8 @@
 import * as esbuild from 'esbuild-wasm'
 import { compileFile } from './vue.compiler'
 
-// 字节地址 https://pdn.zijieapi.com/esm/bv
+// unpkg https://unpkg.com/
+// 字节 https://pdn.zijieapi.com/esm/bv
 export const ESM_SERVER_URL = 'https://esm.sh'
 
 export const css2Js = async (name: string, value?: string) => {

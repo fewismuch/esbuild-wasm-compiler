@@ -61,7 +61,7 @@ export class Compiler {
         let packageJson = pkgJson || this.options?.packageJson
         if (packageJson) {
           const dependencies = packageJson.dependencies
-          modulePath = getEsmUrl(dependencies || null, args.path)
+          modulePath = getEsmUrl(dependencies || null, args.path, this.esmServiceUrl)
           if (modulePath.endsWith('.css')) {
             return {
               path: '/' + modulePath,

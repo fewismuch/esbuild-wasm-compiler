@@ -44,6 +44,8 @@ const msg = ref('我是vue!')
         getFileContent: (path) => {
           return Compiler.getFileContent(path, files)
         },
+      },{
+        esmServiceUrl:'https://pdn.zijieapi.com/esm/bv'
       })
 
       compiler.createApp('/main.js').mount('#app')
