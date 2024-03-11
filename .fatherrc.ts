@@ -10,7 +10,7 @@ const config: IFatherConfig = {
   umd: {
     entry: 'src/index',
     output: 'dist',
-    sourcemap: true,
+    // sourcemap: true,
   },
 }
 
