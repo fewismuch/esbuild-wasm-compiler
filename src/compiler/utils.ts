@@ -12,10 +12,10 @@ export const css2Js = async (name: string, value?: string) => {
   }
   const randomId = new Date().getTime()
   return `(() => {
-            let stylesheet = document.getElementById('style_${randomId}_${name}');
+            let stylesheet = document.getElementById('style_${name}');
             if (!stylesheet) {
               stylesheet = document.createElement('style')
-              stylesheet.setAttribute('id', 'style_${randomId}_${name}')
+              stylesheet.setAttribute('id', 'style_${name}')
               document.head.appendChild(stylesheet)
             }
             const styles = document.createTextNode(\`${cssCode}\`)
