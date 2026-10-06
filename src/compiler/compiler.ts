@@ -27,10 +27,11 @@ export interface CompilerOptions extends esbuild.InitializeOptions {
 
 export class Compiler {
   private readonly decoder: TextDecoder
-  private initialized: boolean = false
-  private static instance: Compiler | null = null
-  private mount: ((selector: string) => Promise<void>) | undefined
+  private readonly initialization: Promise<void>
+  private static initialization: Promise<void> | undefined
   private esmServiceUrl: string
+  private entryPoint?: string
+  private packageJsonPath?: string
 
   constructor(
     private readonly resolver: FilesResolver,
@@ -38,74 +39,58 @@ export class Compiler {
   ) {
     this.esmServiceUrl = options?.esmServiceUrl || ESM_SERVER_URL
     this.decoder = new TextDecoder()
-    esbuild
-      .initialize({
-        wasmURL: `${ESM_SERVER_URL}/esbuild-wasm@0.20.0/esbuild.wasm`,
+    this.initialization = (Compiler.initialization ??= esbuild.initialize({
+        wasmURL: `${ESM_SERVER_URL}/esbuild-wasm@0.28.2/esbuild.wasm`,
         worker: true,
         wasmModule: undefined,
         ...omit(options, ['packageJson', 'esmServiceUrl']),
-      })
-      .then(() => {
-        this.initialized = true
-      })
+      }).catch((error) => {
+        Compiler.initialization = undefined
+        throw error
+      }))
   }
 
   private async onResolveCallback(args: esbuild.OnResolveArgs, pkgJson?: IPackageJson) {
     if (args.kind === 'entry-point') {
-      return { path: '/' + args.path }
+      return { path: Path.resolve('/', args.path), namespace: 'local' }
     }
-    if (args.kind === 'import-statement') {
-      // 第三方依赖包
-      if (!args.path.startsWith('.')) {
-        let modulePath = ''
-        let packageJson = pkgJson || this.options?.packageJson
-        if (packageJson) {
-          const dependencies = packageJson.dependencies
-          modulePath = getEsmUrl(dependencies || null, args.path, this.esmServiceUrl)
-          if (modulePath.endsWith('.css')) {
-            return {
-              path: '/' + modulePath,
-            }
-          }
-          return {
-            path: modulePath,
-            external: true,
-          }
-        } else {
-          // 没有配置packageJson，默认使用cdn最新版
-          const modulePath = getEsmUrl(null, args.path, this.esmServiceUrl)
-          if (modulePath.endsWith('.css')) {
-            return {
-              path: '/' + modulePath,
-            }
-          }
-          return {
-            path: modulePath,
-            external: true,
-          }
-        }
+    if (args.path.startsWith('.') || args.path.startsWith('/')) {
+      return {
+        path: Path.resolve(Path.dirname(args.importer), args.path),
+        namespace: 'local',
       }
-      const dirname = Path.dirname(args.importer)
-      const path = Path.join(dirname, args.path)
-      return { path }
     }
-    throw Error('not resolvable')
+    const modulePath = /^https?:\/\//.test(args.path)
+      ? args.path
+      : getEsmUrl(
+          pkgJson?.dependencies || this.options?.packageJson?.dependencies || null,
+          args.path,
+          this.esmServiceUrl
+        )
+    if (new URL(modulePath).pathname.endsWith('.css')) {
+      return { path: modulePath, namespace: 'remote-css' }
+    }
+    return { path: modulePath, external: true }
   }
 
   private async onLoadCallback(args: esbuild.OnLoadArgs): Promise<esbuild.OnLoadResult> {
-    const extname = Path.extname(args.path)
-    let contents = ''
-    if (!args.path.startsWith('/http'))
-      contents = await Promise.resolve(this.resolver.getFileContent(args.path))
+    const extname = args.namespace === 'remote-css' ? '.css' : Path.extname(args.path)
+    let contents: string
+    if (args.namespace === 'remote-css') {
+      const response = await fetch(args.path)
+      if (!response.ok) throw new Error(`Failed to load ${args.path}: ${response.status}`)
+      contents = await response.text()
+    } else {
+      contents = await this.resolver.getFileContent(args.path)
+    }
     if (extname === '.vue') {
       const fileName = Path.basename(args.path)
       contents = await transformVueCode(fileName, contents)
     }
-    let loader = getLoaderByLang(extname)
+    const loader = getLoaderByLang(extname)
     // css content to js
     if (extname === '.css') {
-      const name = args.path
-      contents = await css2Js(name, contents)
+      contents = await css2Js(args.path, contents)
     }
     if (['.jsx', '.tsx'].includes(extname)) {
       contents = beforeTransformCodeHandler(contents)
@@ -118,15 +103,10 @@ export class Compiler {
     options: esbuild.BuildOptions = {},
     packageJson?: IPackageJson
   ) {
-    while (!this.initialized) {
-      // Wait until initialization is complete
-      await new Promise((resolve) => setTimeout(resolve, 16))
-    }
-
-    let result
     try {
-      result = await esbuild.build({
-        entryPoints: [entryPoint.charAt(0) === '/' ? entryPoint.slice(1) : entryPoint],
+      await this.initialization
+      const result = await esbuild.build({
+        entryPoints: [entryPoint],
         plugins: [
           {
             name: 'browserResolve',
@@ -143,19 +123,25 @@ export class Compiler {
         target: 'es2015',
         platform: 'browser',
         format: 'esm',
-        ...omit(options, ['plugins', 'esmServiceUrl', 'packageJson']),
+        ...omit(options, ['plugins']),
         // required
         bundle: true,
         write: false,
       })
-      const contents = result.outputFiles![0].contents
+      const output =
+        result.outputFiles?.find((file) => file.path.endsWith('.js')) ?? result.outputFiles?.[0]
+      if (!output) throw new Error('Build produced no JavaScript output')
+      const contents = output.contents
       return this.decoder.decode(contents)
-    } catch (e: any) {
-      let formatted = await esbuild.formatMessages(e.errors, {
-        kind: 'error',
-        color: false,
-        terminalWidth: 100,
-      })
+    } catch (e: unknown) {
+      const errors = (e as { errors?: esbuild.Message[] }).errors
+      const formatted = errors
+        ? await esbuild.formatMessages(errors, {
+            kind: 'error',
+            color: false,
+            terminalWidth: 100,
+          })
+        : [e instanceof Error ? e.message : String(e)]
       return {
         error: true,
         message: formatted.join('\n'),
@@ -164,82 +150,52 @@ export class Compiler {
   }
 
   public static createApp(path: string, packageJsonPath?: string) {
-    if (!Compiler.instance) {
-      Compiler.instance = new Compiler({
-        getFileContent: async (path) => {
-          const contents = await fetch(`.${path}`).then((res) => {
-            if (!res.ok) {
-              throw new Error('File not found')
-            }
-            return res.text()
-          })
-          if (path.endsWith('.vue')) {
-            const fileName = Path.basename(path)
-            return await transformVueCode(fileName, contents)
-          }
-          return contents
-        },
-      })
-    }
-
-    Compiler.instance.mount = async (selector: string) => {
-      // TODO 改成创建iframe sandbox
-      const root = document.querySelector(selector)
-      if (!root) {
-        throw new Error('Root element not found')
-      }
-      // 获取package.json文件内容
-      let packageJson
-      if (packageJsonPath) {
-        const packageJsonText = await fetch(`${packageJsonPath}`).then((res) => {
-          if (!res.ok) throw new Error('File not found')
-          return res.text()
-        })
-        packageJson = JSON.parse(packageJsonText)
-      }
-      const code = await Compiler.instance?.compile(path, {}, packageJson)
-      if (code && typeof code !== 'string' && code.error) {
-        root.innerHTML = code.message
-        return
-      }
-      if (typeof code === 'string') {
-        const script = document.createElement('script')
-        script.type = 'module'
-        script.innerHTML = code
-        document.body.appendChild(script)
-      }
-    }
-
-    return Compiler.instance
+    const compiler = new Compiler({
+      getFileContent: async (filePath) => {
+        const response = await fetch(`.${filePath}`)
+        if (!response.ok) throw new Error(`File not found: ${filePath}`)
+        return response.text()
+      },
+    })
+    compiler.packageJsonPath = packageJsonPath
+    return compiler.createApp(path)
   }
 
   public static getFileContent(path: string, files: Record<string, string>) {
-    const filePath = Object.keys(files).find((item) => item.startsWith(path))
+    const filePath = [
+      path,
+      ...['.ts', '.tsx', '.js', '.jsx', '.vue', '.json', '.css'].map((ext) => path + ext),
+    ].find((candidate) => Object.prototype.hasOwnProperty.call(files, candidate))
     const content = filePath ? files[filePath] : null
-    if (!content) {
+    if (content == null) {
       throw new Error('File not found')
     }
     return content
   }
 
   public createApp(path: string) {
-    this.mount = async (selector: string) => {
-      const code = await this.compile(path)
-      if (typeof code !== 'string' && code.error) {
-        const root = document.querySelector(selector)
-        if (!root) {
-          throw new Error('Root element not found')
-        }
-        root.innerHTML = code.message
-        return
-      }
-      const script = document.createElement('script')
-      script.type = 'module'
-      if (typeof code === 'string') {
-        script.innerHTML = code
-      }
-      document.body.appendChild(script)
-    }
+    this.entryPoint = path
     return this
+  }
+
+  public async mount(selector: string): Promise<void> {
+    if (!this.entryPoint) throw new Error('Call createApp(path) before mount()')
+    const root = document.querySelector(selector)
+    if (!root) throw new Error('Root element not found')
+    let packageJson: IPackageJson | undefined
+    if (this.packageJsonPath) {
+      const response = await fetch(this.packageJsonPath)
+      if (!response.ok) throw new Error(`File not found: ${this.packageJsonPath}`)
+      packageJson = await response.json()
+    }
+    const code = await this.compile(this.entryPoint, {}, packageJson)
+    if (typeof code !== 'string') {
+      root.textContent = code.message
+      return
+    }
+    const script = document.createElement('script')
+    script.type = 'module'
+    script.textContent = code
+    document.body.appendChild(script)
   }
 }

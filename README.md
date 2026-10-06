@@ -36,9 +36,8 @@ import {files} from './files'
 
 const compiler = new Compiler({
   getFileContent: path => {
-    const filePath = Object.keys(files).find(item=>item.startsWith(path))
-    const content = filePath ? files[filePath] : null
-    if (!content) {
+    const content = files[path]
+    if (content == null) {
       throw new Error("File not found");
     }
     return content;
@@ -81,16 +80,26 @@ export interface CompilerOptions extends esbuild.InitializeOptions {
   packageJson?: Record<string, any>;
   // esm服务地址
   esmServiceUrl?: string
+  // 可覆盖默认的 esbuild-wasm 0.28.2 CDN 地址
+  wasmURL?: string
 }
 export declare class Compiler {
   constructor(resolver: FilesResolver, options?: CompilerOptions | undefined);
-  compile(entryPoint: string, options?: esbuild.BuildOptions): Promise<string | {
+  compile(entryPoint: string, options?: esbuild.BuildOptions, packageJson?: Record<string, any>): Promise<string | {
     error: boolean;
     message: string;
   }>;
   static createApp(path: string, packageJsonPath?: string): Compiler;
+  createApp(path: string): this;
+  mount(selector: string): Promise<void>;
 }
 ```
+
+`mount()` 会在当前页面执行编译后的代码，只适合可信的项目。若输入来自不可信用户，请在隔离的 iframe 中运行，并限制其权限。
+
+## 开发
+
+使用 pnpm 安装依赖，然后运行 `pnpm typecheck`、`pnpm test` 和 `pnpm audit`。`pnpm build` 生成 ESM、UMD 和类型声明。示例目录的 `package.json` 仅用于指定浏览器 CDN 依赖版本，无需单独安装旧版 Vue CLI 或 Create React App。
 
 ## 参考
 

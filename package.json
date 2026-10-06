@@ -19,10 +19,10 @@
     "url": "https://github.com/fewismuch/esbuild-wasm-compiler"
   },
   "scripts": {
-    "dev": "father dev",
-    "build": "father build",
-    "build:deps": "father prebundle",
-    "prepublishOnly": "father doctor && npm run build"
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/build.mjs && node --test test/*.test.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "files": [
     "dist"
@@ -30,12 +30,13 @@
   "publishConfig": {
     "access": "public"
   },
+  "packageManager": "pnpm@10.17.1",
   "dependencies": {
-    "@vue/compiler-sfc": "3.4.21",
-    "esbuild-wasm": "0.20.0"
+    "@vue/compiler-sfc": "3.5.43",
+    "esbuild-wasm": "0.28.2"
   },
   "devDependencies": {
-    "@rainetian/lint": "^0.1.0",
-    "father": "^4.1.7"
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3"
   }
 }
