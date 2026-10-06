@@ -6,21 +6,16 @@ import { compileFile } from './vue.compiler'
 export const ESM_SERVER_URL = 'https://esm.sh'
 
 export const css2Js = async (name: string, value?: string) => {
-  let cssCode = value
-  if (name.startsWith('/http')) {
-    cssCode = await fetch(name.replace('/', '')).then((res) => res.text())
-  }
-  const randomId = new Date().getTime()
+  const cssCode = value ?? ''
   return `(() => {
-            let stylesheet = document.getElementById('style_${name}');
+            const id = ${JSON.stringify(`style_${name}`)};
+            let stylesheet = document.getElementById(id);
             if (!stylesheet) {
               stylesheet = document.createElement('style')
-              stylesheet.setAttribute('id', 'style_${name}')
+              stylesheet.id = id
               document.head.appendChild(stylesheet)
             }
-            const styles = document.createTextNode(\`${cssCode}\`)
-            stylesheet.innerHTML = ''
-            stylesheet.appendChild(styles)
+            stylesheet.textContent = ${JSON.stringify(cssCode)}
           })()`
 }
 
@@ -44,6 +39,7 @@ export const getLoaderByLang = (lang: string) => {
       break
     case '.css':
       loader = 'js'
+      break
     case '.vue':
       loader = 'ts'
       break
@@ -60,32 +56,14 @@ export const omit = (obj = {}, props: string[]) => {
 
 export const getEsmName = (dependencies: Record<string, string> | null, importName: string) => {
   if (importName.startsWith('@')) {
-    // @a/b/c
-    if (!dependencies?.[importName]) {
-      let pkgName = ''
-      const secondSlashIndex = importName.indexOf('/', importName.indexOf('/') + 1)
-      if (secondSlashIndex !== -1) {
-        // 第二个'/'之前的字符 -> @a/b
-        pkgName = importName.substring(0, secondSlashIndex)
-        return pkgName
-      }
-      return importName
-    } else {
-      return importName
-    }
-  } else {
-    // @a/b
-    return importName.split('/')[0]
+    return importName.split('/').slice(0, 2).join('/')
   }
+  return importName.split('/')[0]
 }
 
 export const getEsmVersion = (dependencies: Record<string, string> | null, pkgName: string) => {
-  let version = dependencies?.[pkgName] || ''
-  const prefixes = ['^', '~', 'latest', '=', '>', '>=', '<=', '<', '*']
-  prefixes.forEach((item) => {
-    version = version.replace(item, '')
-  })
-  return version
+  const version = dependencies?.[pkgName] || ''
+  return /^[~^]?\d+(?:\.\d+){0,2}(?:[-+][\w.-]+)?$/.test(version) ? version : ''
 }
 
 // 生成esm地址
@@ -97,18 +75,7 @@ export const getEsmUrl = (
   const esmName = getEsmName(dependencies, path)
   const version = getEsmVersion(dependencies, esmName)
 
-  if (['react', 'react-dom'].includes(esmName)) {
-    return `${esmServerUrl}/${esmName}@18.2.0`
-  }
-  if (version) {
-    // 处理类似这种资源导入  import '@rainetian/file-explorer/dist/FileExplorer/index.css'
-    if (!![dependencies?.[esmName]])
-      return `${esmServerUrl}/${esmName}@${version}${path.replace(esmName, '')}`
-    return `${esmServerUrl}/${esmName}@${version}`
-  } else {
-    if (path.length > esmName.length) return `${esmServerUrl}/${path}`
-    return `${esmServerUrl}/${esmName}`
-  }
+  return `${esmServerUrl.replace(/\/$/, '')}/${esmName}${version ? `@${version}` : ''}${path.slice(esmName.length)}`
 }
 
 export const beforeTransformCodeHandler = (code: string) => {
@@ -123,12 +90,10 @@ export const beforeTransformCodeHandler = (code: string) => {
 
 export const transformVueCode = async (fileName: string, contents: string) => {
   const vueCode = await compileFile(fileName, contents.trim())
-  if (!Array.isArray(vueCode)) {
-    const { js, css } = vueCode
-    const style = await css2Js(fileName, css)
-    return js + ';\n' + style
-  } else {
-    // vue编译异常处理
-    return contents
+  if (Array.isArray(vueCode)) {
+    throw new Error(vueCode.map(String).join('\n'))
   }
+  const { js, css } = vueCode
+  const style = await css2Js(fileName, css)
+  return js + ';\n' + style
 }
