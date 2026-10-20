@@ -32,7 +32,7 @@
   },
   "packageManager": "pnpm@10.17.1",
   "dependencies": {
-    "@vue/compiler-sfc": "3.5.43",
+    "@vue/compiler-sfc": "3.5.44",
     "esbuild-wasm": "0.28.2"
   },
   "devDependencies": {
